@@ -1,0 +1,12 @@
+package dalvik.applet;
+
+// these API's are now completey optional (they are called by reflection)
+// each scriptable Java object may implement any or all of these API's
+// as a Java interface this interface is now completely obsolete. it may be removed.
+public interface PluginObjectInterf
+{
+  //public boolean hasProperty(String name);    // optional
+  //public Object getProperty(String name);     // optional
+  //public boolean hasMethod(String name);      // optional
+  //public void destroy();                      // optional
+}
