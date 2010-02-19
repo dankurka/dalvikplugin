@@ -1,9 +1,12 @@
-cp ../../out/target/product/generic/data/app/DalvikPlugin.apk .
+Dalvikplugin creates a bridge between the Android browser and the 
+Dalvik VM. This makes it possible to deploy and execute hybrid Web 
+applications, where DOM extensions are implemented in a VM language 
+(such as Java or Scala) and can be consumed by Javascript.
 
-aidl src/com/android/dalvikplugin/IPluginService.aidl
+The plugin is currently in alpha state. A description of how to 
+build the plugin and how to write Dalvik “Applets” will soon be 
+added here.
 
-javap -s -p bin/classes/org/timur/jil/Jil
-
-adb logcat | grep -E '/Dex|/plugin|/System.out|browser|signal|/System.err|/webcore|Accelero|Jil|DeviceImpl|Position'
-
+Some hybrid Webapp sample can be found at: 
+http://lab.vodafone.com/dalvikplugin/
 
