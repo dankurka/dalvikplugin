@@ -20,18 +20,25 @@ follow these steps:
 1. Switch to the root of the Android codebase and run the usual
 commands to build:
 
-	$ . build/envsetup.sh $ lunch generic-eng $ make
+	$ . build/envsetup.sh
+
+	$ lunch generic-eng
+
+	$ make
 
 2. Switch to subfolder 'external' and pull the Dalvikplugin source.
 This will create a 'dalvikplugin' subfolder:
 
-	$ cd external/ $ git clone
-	git://github.com/mehrvarz/dalvikplugin.git
+	$ cd external/
+
+	$ git clone git://github.com/mehrvarz/dalvikplugin.git
 
 3. Switch to 'dalvikplugin' and execute the command to build a local
 target:
 
-	$ cd dalvikplugin/ $ mm
+	$ cd dalvikplugin/
+
+	$ mm
 
 This will create an installable Dalvikplugin archive 'DalvikPlugin.apk'
 in folder 'out/target/product/generic/data/app/' (see: 'cp-plugin.sh').
