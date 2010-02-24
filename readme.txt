@@ -53,7 +53,7 @@ also be installed from
 --- to be completed ---
 
 
-*** Run Dalvik Applets
+*** Run Dalvik 'Applets'
 
 Some hybrid Webapp samples can be found here:
 'http://lab.vodafone.com/dalvikplugin/'
