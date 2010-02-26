@@ -65,3 +65,5 @@ also be installed from
 Some hybrid Webapp samples can be found here:
 'http://lab.vodafone.com/dalvikplugin/'
 
+
+..
