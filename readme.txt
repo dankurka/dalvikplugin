@@ -51,8 +51,8 @@ Android emulator or on a physical device.
 
 Method 2: Put DalvikPlugin.apk on a webserver and enter it's URL
 in the Android browser. A precompiled binary of Dalvikplugin can
-also be installed from
-'http://lab.vodafone.com/dalvikplugin/DalvikPlugin.apk'.
+also be installed from: 
+http://lab.vodafone.com/dalvikplugin/DalvikPlugin.apk
 
 
 *** Create your own Dalvik 'Applets'
@@ -63,7 +63,6 @@ also be installed from
 *** Run Dalvik 'Applets'
 
 Some hybrid Webapp samples can be found here:
-'http://lab.vodafone.com/dalvikplugin/'
+http://lab.vodafone.com/dalvikplugin/
 
 
-..
