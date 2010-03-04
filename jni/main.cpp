@@ -1,31 +1,3 @@
-/*
- * Copyright (c) 2009 Timur Mehrvarz <timur.mehrvarz@web.de>
- * Copyright 2008, The Android Open Source Project
- *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions
- * are met:
- *
- * 1. Redistributions of source code must retain the above copyright
- *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
- * 3. The name of the author may not be used to endorse or promote products
- *    derived from this software without specific prior written permission.
- *
- * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
- * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
- * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
-
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -69,8 +41,9 @@ ANPWindowInterfaceV0        gWindowI;
 
 #define ARRAY_COUNT(array)      (sizeof(array) / sizeof(array[0]))
 
+static const char* version = "0.4.0";
 static JavaVM* jvm = NULL;
-//static bool    needDexInit=true;
+static char* applicationDataDirectory = NULL;
 
 NPError NP_Initialize(NPNetscapeFuncs* browserFuncs, NPPluginFuncs* pluginFuncs, void* java_env, void* application_context)
 {
@@ -157,7 +130,7 @@ const char* NP_GetMIMEDescription(void)
 NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16 mode, int16 argc, char* argn[], char* argv[], NPSavedData* saved)
 {
   if(instance)
-    gLogI.log(instance, kDebug_ANPLogType, "main NPP_New instance=%p browser=%p",instance,browser);
+    gLogI.log(instance, kDebug_ANPLogType, "main NPP_New instance=%p browser=%p version=%s",instance,browser,version);
 
   char* archive = NULL;
   char* classid = NULL;
@@ -228,7 +201,7 @@ NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16 mode, int16 argc, ch
   if(instance)
     gLogI.log(instance, kDebug_ANPLogType, "main NPP_New pluginObj->jobjectUniqueIdString=%s",pluginObj->jobjectUniqueIdString);
 
-//  pluginObj->rootNpObject = pluginObj;
+  pluginObj->rootNpObject = pluginObj;
 
   ANPDrawingModel anpDrawingModel = kSurface_ANPDrawingModel;
 //ANPDrawingModel anpDrawingModel = kBitmap_ANPDrawingModel;
@@ -261,21 +234,29 @@ NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16 mode, int16 argc, ch
   }
 
   //gLogI.log(instance, kDebug_ANPLogType, "main NPP_New gSystemI.getApplicationDataDirectory()");
-  const char* path = gSystemI.getApplicationDataDirectory();
-  if (path) {
-    if(instance)
-      gLogI.log(instance, kDebug_ANPLogType, "main NPP_New Application data dir is %s", path);
-  } else {
-    if(instance)
-      gLogI.log(instance, kError_ANPLogType, "main NPP_New Can't find Application data dir");
-  }
+  applicationDataDirectory = (char*)gSystemI.getApplicationDataDirectory();
+  if(applicationDataDirectory)
+  {
+    // /data/data/com.android.browser/app_plugins
+    // /data/data/com.android.browser/cache/
 
+    // /data/data/org.timur.hybridapp/app_plugins
+    //
+    if(instance)
+      gLogI.log(instance, kDebug_ANPLogType, "main NPP_New applicationDataDirectory=%s", applicationDataDirectory);
+  }
+  else
+  {
+    if(instance)
+      gLogI.log(instance, kError_ANPLogType, "main NPP_New Can't find Application data dir ##########################");
+  }
 
   gLogI.log(instance, kError_ANPLogType, "main NPP_New jvm=%p +++++++++++++++++++++++++++++++++",jvm);
   if(jvm)
   {
     PluginObject* plugin = pluginObj;
     pluginObj->vm = jvm;
+    pluginObj->applicationDataDirectory = applicationDataDirectory;
 
     JNIEnv* jniEnv = NULL;
     jint result = pluginObj->vm->AttachCurrentThread(&jniEnv, NULL);
@@ -288,7 +269,7 @@ NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16 mode, int16 argc, ch
       gLogI.log(instance, kError_ANPLogType, "main NPP_New jniEnv=%p",jniEnv);
 
 /*
-// we would like to initialize the VM here, but due to lack of 'pluginObj->vm' we do it in jni-bridge::createSurface()
+// we would like ti initialize the VM here, but due to lack of 'pluginObj->vm' we do it in jni-bridge::createSurface()
 //  gLogI.log(instance, kDebug_ANPLogType, "main NPP_New jniEnv=%p thiz=%p instance=%p surface=%p",jniEnv,thiz,instance,surface);
 
       // Get the WebView pointer. Note that this MUST execute on either
@@ -374,7 +355,6 @@ NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16 mode, int16 argc, ch
 
               // loadDex() will load the applet, call init()
               // applet.init() may call "onJavaLoad()" in JS
-              plugin->needDexInit=false;
             }
           }
 
@@ -389,10 +369,19 @@ NPError NPP_New(NPMIMEType pluginType, NPP instance, uint16 mode, int16 argc, ch
     }
   }
 
+/*
+  // NEEDED FOR DRAWING
+  SurfaceSubPlugin* obj = getPluginObject(npp);
+  if(obj && jniEnv)
+    obj->surfaceCreated(jniEnv, surface);    // call PaintPlugin.cpp surfaceCreated()
+*/
+
   gLogI.log(instance, kDebug_ANPLogType, "main NPP_New done");
 
   return NPERR_NO_ERROR;
 }
+
+//#include <unistd.h>   // for sleep() / usleep();
 
 NPError NPP_Destroy(NPP instance, NPSavedData** save)
 {
@@ -418,7 +407,7 @@ NPError NPP_Destroy(NPP instance, NPSavedData** save)
         {
 /*
           // TODO: before calling DexLoader.shutdown(), we must make sure DexLoader.callStop() was called
-          if(plugin->dexLoaderClass && !plugin->needDexInit)
+          if(plugin->dexLoaderClass)
           {
             const char* stopMethodName = "callStop";
             gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceDestroyed() GetStaticMethodID(%s)...",stopMethodName);

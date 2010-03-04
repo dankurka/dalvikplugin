@@ -1,21 +1,3 @@
-/*
- * Copyright (C) 2009 Timur Mehrvarz <timur.mehrvarz@web.de>
- * Copyright (C) 2009 The Android Open Source Project
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- *
- */
-
 #include <string.h>
 #include <jni.h>
 #include <JNIHelp.h>
@@ -38,7 +20,7 @@ static void surfaceCreated(JNIEnv* jniEnv, jobject thiz, jint npp, jobject surfa
   if(!instance)
     return;
 
-  gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceCreated() jniEnv=%p thiz=%p instance=%p surface=%p",jniEnv,thiz,instance,surface);
+  gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceCreated() jniEnv=%p thiz=%p instance=%p surface=%p needDexInit=%d",jniEnv,thiz,instance,surface,needDexInit);
 
   //gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceCreated() vm=%p",vm);
   PluginObject* plugin = static_cast<PluginObject*>(instance->pdata);
@@ -49,7 +31,7 @@ static void surfaceCreated(JNIEnv* jniEnv, jobject thiz, jint npp, jobject surfa
     return;
   }
 
-  if(/*plugin->*/needDexInit)
+  if(needDexInit)
   {
     JavaVM* vm = NULL;
     jniEnv->GetJavaVM(&vm);
@@ -62,7 +44,6 @@ static void surfaceCreated(JNIEnv* jniEnv, jobject thiz, jint npp, jobject surfa
 /* */
     plugin->vm = vm;
     gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceCreated() plugin->vm set vm=%p",vm);
-
 
     // Get the WebView pointer. Note that this MUST execute on either
     // the browser main thread or a worker thread and only
@@ -126,7 +107,7 @@ static void surfaceCreated(JNIEnv* jniEnv, jobject thiz, jint npp, jobject surfa
 
       const char* dexInvokerMethodName = "loadDexInit";
       //gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceCreated() GetStaticMethodID(%s)...",dexInvokerMethodName);
-      jmethodID  dexLoaderMethod = jniEnv->GetStaticMethodID(plugin->dexLoaderClass, dexInvokerMethodName, "([Ljava/lang/String;Landroid/webkit/WebView;)V");
+      jmethodID  dexLoaderMethod = jniEnv->GetStaticMethodID(plugin->dexLoaderClass, dexInvokerMethodName, "([Ljava/lang/String;Landroid/webkit/WebView;Ljava/lang/String;)V");
       if(dexLoaderMethod == NULL)
       {
         gLogI.log(instance, kError_ANPLogType, "jni-bridge surfaceCreated() JavaVM unable to find %s() in dexLoaderClass ################################################", dexLoaderMethod);
@@ -149,12 +130,13 @@ static void surfaceCreated(JNIEnv* jniEnv, jobject thiz, jint npp, jobject surfa
           gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceCreated() arg3=instance=%s instance=%i",buffer,instance);
           jniEnv->SetObjectArrayElement(argArray, 3, jniEnv->NewStringUTF(buffer));                   // 4th arg = npp
 
-          //gLogI.log(instance, kDebug_ANPLogType, "jni-bridge use arguments [%s] [%s] [%s] [%s]...",plugin->dynamicDexArchive,plugin->jobjectUniqueIdString,"-",buffer);
-          jniEnv->CallStaticVoidMethod(plugin->dexLoaderClass, dexLoaderMethod, argArray, plugin->webviewGlob);
+          gLogI.log(instance, kDebug_ANPLogType, "jni-bridge use arguments [%s] [%s] [%s] [%s]...",plugin->dynamicDexArchive,plugin->jobjectUniqueIdString,"-",buffer);
+          gLogI.log(instance, kDebug_ANPLogType, "jni-bridge plugin->applicationDataDirectory=[%s] ++++++++++++++++++",plugin->applicationDataDirectory);
+          jniEnv->CallStaticVoidMethod(plugin->dexLoaderClass, dexLoaderMethod, argArray, plugin->webviewGlob, jniEnv->NewStringUTF(plugin->applicationDataDirectory));
+          // loadDex() will now load the applet, call init()
+          //           applet.init() will then call "onJavaLoad()" in JS
 
-          // loadDex() will load the applet, call init()
-          //           applet.init() will call "onJavaLoad()" in JS
-          /*plugin->*/needDexInit=false;
+          needDexInit=false;
         }
       }
     }
@@ -165,7 +147,7 @@ static void surfaceCreated(JNIEnv* jniEnv, jobject thiz, jint npp, jobject surfa
     }
 /* */
 
-    if(plugin->dexLoaderClass && !/*plugin->*/needDexInit)
+    if(plugin->dexLoaderClass && !needDexInit)
     {
       // call applet start()
       const char* startMethodName = "callStart";
@@ -186,8 +168,6 @@ static void surfaceCreated(JNIEnv* jniEnv, jobject thiz, jint npp, jobject surfa
   //SurfaceSubPlugin* obj = getPluginObject(npp);
   //if(obj && jniEnv)
   //  obj->surfaceCreated(jniEnv, surface);    // call PaintPlugin.cpp surfaceCreated()
-
-//  plugin->surfaceActive = true;
 
   gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceCreated() done");
 }
@@ -217,12 +197,51 @@ static void surfaceDestroyed(JNIEnv* jniEnv, jobject thiz, jint npp)
 
   gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceDestroyed() instance=%p ...",instance);
 
+/*
+  SurfaceSubPlugin* obj = getPluginObject(npp);
+  if(obj)
+    obj->surfaceDestroyed();    // call PaintPlugin.cpp surfaceDestroyed()
+*/
+
   if(instance->pdata!=NULL)
   {
     PluginObject* plugin = static_cast<PluginObject*>(instance->pdata);
     gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceDestroyed() plugin=%p",plugin);
+
+/*
+    if(plugin)
+    {
+      if((int)plugin<0x10000)
+      {
+        gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceDestroyed() plugin<0x10000 ############################################");
+        return;
+      }
+
+
+      gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceDestroyed() plugin->dexLoaderClass=%p",plugin->dexLoaderClass);
+
+      // call applet stop() via DexLoader.callstop()
+      if(plugin->dexLoaderClass && !needDexInit)
+      {
+        const char* stopMethodName = "callStop";
+        gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceDestroyed() GetStaticMethodID(%s)...",stopMethodName);
+        jmethodID  stopMethod = jniEnv->GetStaticMethodID(plugin->dexLoaderClass, stopMethodName, "()V");
+        if(stopMethod == NULL)
+        {
+          gLogI.log(instance, kError_ANPLogType, "jni-bridge surfaceCreated() JavaVM unable to find %s() via dexLoaderClass ################################################", stopMethodName);
+        }
+        else
+        {
+          jniEnv->CallStaticVoidMethod(plugin->dexLoaderClass, stopMethod, NULL);
+        }
+      }
+
+    }
+*/
+
   }
 
+  needDexInit=true;
   gLogI.log(instance, kDebug_ANPLogType, "jni-bridge surfaceDestroyed done");
 }
 
@@ -234,18 +253,24 @@ static jboolean isFixedSurface(JNIEnv* env, jobject thiz, jint npp)
   if(!instance)
     return false;
 
+/*
+  //gLogI.log(instance, kDebug_ANPLogType, "jni-bridge isFixedSurface() ...");
+  SurfaceSubPlugin* obj = getPluginObject(npp);
+  if(obj)
+    return obj->isFixedSurface();
+  return false;
+*/
   return false;
 }
 
 
 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 typedef struct InvokeNativeObject {
   NPP npp;              // npp instance from surfaceCreated()
   NPObject* jsobj;      // JS object
   char methodName[256];
-//  jobject[] args;
+  //jobject[] args;
 } InvokeNativeObject;
 
 static void invokeNativeAsync(void* param)
@@ -359,6 +384,8 @@ typedef struct _NPP
 
 typedef NPP_t*    NPP;
 */
+
+
 
 // called by PluginAppletViewer.java nativeInvokeNative()
 static jboolean invokeNative(JNIEnv* jniEnv,
